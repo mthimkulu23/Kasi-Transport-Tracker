@@ -3,7 +3,7 @@ from db_setup import add_driver, add_route, record_trip
 from datetime import date
 import csv
 from db_setup import reports
-from db_setup import get_money
+
 
 
 def register_driver():
