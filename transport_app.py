@@ -67,11 +67,7 @@ def log_trip():
         conn.close()
 
 
-import csv
-from datetime import date
 
-import csv
-from datetime import date
 
 def daily_report():
     conn = create_database()
