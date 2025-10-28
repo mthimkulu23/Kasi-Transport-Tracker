@@ -2,6 +2,7 @@ from db_setup import create_database, create_tables
 from db_setup import add_driver, add_route, record_trip
 from datetime import date
 import csv
+from db_setup import reports
 
 
 def register_driver():
@@ -68,40 +69,27 @@ def log_trip():
 
 
 
-
 def daily_report():
     conn = create_database()
     cursor = conn.cursor()
     today = date.today()
 
     try:
-        query = """
-            SELECT 
-                d.id AS driver_id,
-                d.name AS driver_name,
-                d.taxi_number,
-                r.origin,
-                r.destination,
-                SUM(t.total_amount) AS total_earned,
-                COUNT(t.id) AS trips_made
-            FROM trips t
-            JOIN drivers d ON t.driver_id = d.id
-            JOIN routes r ON t.route_id = r.id
-            WHERE DATE(t.trip_date) = %s
-            GROUP BY d.id, d.name, d.taxi_number, r.origin, r.destination
-            ORDER BY total_earned DESC;
-        """
-        cursor.execute(query, (today,))
-        results = cursor.fetchall()
+      
+        results = reports(cursor, today)
 
-        print(f"\n📊 Daily Report for {today}")
+        print(f"\n Daily Report for {today}")
         print("-" * 70)
         print(f"{'Driver Name':<15}{'Taxi No.':<12}{'Route':<25}{'Trips':<7}{'Total (R)':>10}")
         print("-" * 70)
 
-        for driver_name, taxi_number, origin, destination, total_earned, trips_made in [
-            (r[1], r[2], r[3], r[4], r[5], r[6]) for r in results
-        ]:
+        for r in results:
+            driver_name = r[1]
+            taxi_number = r[2]
+            origin = r[3]
+            destination = r[4]
+            total_earned = r[5]
+            trips_made = r[6]
             print(f"{driver_name:<15}{taxi_number:<12}{origin}→{destination:<15}{trips_made:<7}{total_earned:>10.2f}")
 
         # Export to CSV
@@ -111,7 +99,7 @@ def daily_report():
             for r in results:
                 writer.writerow([r[1], r[2], f"{r[3]}→{r[4]}", r[6], r[5]])
 
-        print(f"\nReport exported as daily_report_{today}.csv")
+        print(f"\n Report exported as daily_report_{today}.csv")
 
     except Exception as e:
         print("❌ Error generating report:", e)
@@ -119,6 +107,7 @@ def daily_report():
     finally:
         cursor.close()
         conn.close()
+
 
         
 
@@ -187,7 +176,7 @@ def main():
     create_tables()
     
     while True:
-        print("\033[1;34m========== MAIN MENU ==========\033[0m")  # Blue header
+        print("\033[1;34m========== MAIN MENU ==========\033[0m")  
         print("1. Add Driver 🚐")
         print("2. Add Route 🛣️")
         print("3. Record Trip 📝")

@@ -98,6 +98,28 @@ def record_trip(cursor, driver_id, route_id, passengers):
         'passengers': passengers,
         'total_amount': total_amount
     }
+    
+
+def reports(cursor, today):
+    query = """
+        SELECT 
+            d.id AS driver_id,
+            d.name AS driver_name,
+            d.taxi_number,
+            r.origin,
+            r.destination,
+            SUM(t.total_amount) AS total_earned,
+            COUNT(t.id) AS trips_made
+        FROM trips t
+        JOIN drivers d ON t.driver_id = d.id
+        JOIN routes r ON t.route_id = r.id
+        WHERE DATE(t.trip_date) = %s
+        GROUP BY d.id, d.name, d.taxi_number, r.origin, r.destination
+        ORDER BY total_earned DESC;
+    """
+    cursor.execute(query, (today,))
+    return cursor.fetchall()
+
 
 
 
