@@ -1,6 +1,7 @@
 from db_setup import create_database, create_tables
 from db_setup import add_driver, add_route, record_trip
 from datetime import date
+import csv
 
 
 def register_driver():
