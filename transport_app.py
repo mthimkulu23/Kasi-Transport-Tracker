@@ -66,48 +66,141 @@ def log_trip():
         conn.close()
 
 
+import csv
+from datetime import date
+
+import csv
+from datetime import date
+
 def daily_report():
     conn = create_database()
     cursor = conn.cursor()
-
     today = date.today()
 
     try:
         query = """
-            SELECT driver_id, SUM(total_amount) AS total_amount
-            FROM trips
-            WHERE DATE(trip_date) = %s
-            GROUP BY driver_id
-            ORDER BY total_amount DESC;
+            SELECT 
+                d.id AS driver_id,
+                d.name AS driver_name,
+                d.taxi_number,
+                r.origin,
+                r.destination,
+                SUM(t.total_amount) AS total_earned,
+                COUNT(t.id) AS trips_made
+            FROM trips t
+            JOIN drivers d ON t.driver_id = d.id
+            JOIN routes r ON t.route_id = r.id
+            WHERE DATE(t.trip_date) = %s
+            GROUP BY d.id, d.name, d.taxi_number, r.origin, r.destination
+            ORDER BY total_earned DESC;
         """
         cursor.execute(query, (today,))
         results = cursor.fetchall()
 
-        print(f"Daily Report for {today}")
-        print("-" * 35)
-        for driver_id, total in results:
-            print(f"Driver {driver_id}: R{total:.2f}")
+        print(f"\n📊 Daily Report for {today}")
+        print("-" * 70)
+        print(f"{'Driver Name':<15}{'Taxi No.':<12}{'Route':<25}{'Trips':<7}{'Total (R)':>10}")
+        print("-" * 70)
+
+        for driver_name, taxi_number, origin, destination, total_earned, trips_made in [
+            (r[1], r[2], r[3], r[4], r[5], r[6]) for r in results
+        ]:
+            print(f"{driver_name:<15}{taxi_number:<12}{origin}→{destination:<15}{trips_made:<7}{total_earned:>10.2f}")
+
+        # Export to CSV
+        with open(f'daily_report_{today}.csv', 'w', newline='') as file:
+            writer = csv.writer(file)
+            writer.writerow(['Driver Name', 'Taxi Number', 'Route', 'Trips Made', 'Total Earned (R)'])
+            for r in results:
+                writer.writerow([r[1], r[2], f"{r[3]}→{r[4]}", r[6], r[5]])
+
+        print(f"\nReport exported as daily_report_{today}.csv")
 
     except Exception as e:
-        print("Error generating report:", e)
+        print("❌ Error generating report:", e)
 
     finally:
         cursor.close()
         conn.close()
 
+        
+
+def search_drivers():
+    conn = create_database()
+    cursor = conn.cursor()
+    search_term = input("Enter driver name to search: ").strip()
+    try:
+        cursor.execute("SELECT id, name, taxi_number FROM drivers WHERE name ILIKE %s", (f"%{search_term}%",))
+        results = cursor.fetchall()
+        if results:
+            for driver in results:
+                print(f"ID: {driver[0]}, Name: {driver[1]}, Taxi: {driver[2]}")
+        else:
+            print("No drivers found.")
+    finally:
+        cursor.close()
+        conn.close()
+
+def search_routes():
+    conn = create_database()
+    cursor = conn.cursor()
+    search_term = input("Enter origin or destination to search: ").strip()
+    try:
+        cursor.execute("SELECT id, origin, destination, fare FROM routes WHERE origin ILIKE %s OR destination ILIKE %s",
+                       (f"%{search_term}%", f"%{search_term}%"))
+        results = cursor.fetchall()
+        if results:
+            for route in results:
+                print(f"ID: {route[0]}, {route[1]} -> {route[2]}, Fare: R{route[3]:.2f}")
+        else:
+            print("No routes found.")
+    finally:
+        cursor.close()
+        conn.close()
+
+
+def top_earning_driver():
+    conn = create_database()
+    cursor = conn.cursor()
+    today = date.today()
+    try:
+        cursor.execute("""
+            SELECT driver_id, SUM(total_amount) AS total_amount
+            FROM trips
+            WHERE DATE(trip_date) = %s
+            GROUP BY driver_id
+            ORDER BY total_amount DESC
+            LIMIT 1;
+        """, (today,))
+        result = cursor.fetchone()
+        if result:
+            print(f"Top-earning driver today: ID {result[0]} with R{result[1]:.2f}")
+        else:
+            print("No trips recorded today.")
+    finally:
+        cursor.close()
+        conn.close()
+
+
+
+
 
 def main():
-    print("Sawubona! Welcome to Kasi Transport Tracker!")
+    print("🇿🇦 Sawubona! Welcome to Kasi Transport Tracker!")
     create_tables()
     
     while True:
-        print("\n========== MAIN MENU ==========")
-        print("1. Add Driver")
-        print("2. Add Route")
-        print("3. Record Trip")
-        print("4. Daily Report")
-        print("5. Exit")
-        print("================================")
+        print("\033[1;34m========== MAIN MENU ==========\033[0m")  # Blue header
+        print("1. Add Driver 🚐")
+        print("2. Add Route 🛣️")
+        print("3. Record Trip 📝")
+        print("4. Daily Report 📊")
+        print("5. Search Drivers 🔍")
+        print("6. Search Routes 🗺️")
+        print("7. Top Earning Driver 🏆")
+        print("8. Exit ❌")
+        print("\033[1;34m================================\033[0m")
+
 
         choice = input("\n ENTER YOUR CHOICE: ").strip()
 
@@ -120,6 +213,12 @@ def main():
         elif choice == "4":
             daily_report()
         elif choice == "5":
+            search_drivers()
+        elif choice == "6":
+            search_routes()
+        elif choice == "7":
+            top_earning_driver()
+        elif choice == "8":
             print("Exiting... Hamba kahle!")
             break
         else:
