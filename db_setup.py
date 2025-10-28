@@ -120,6 +120,16 @@ def reports(cursor, today):
     cursor.execute(query, (today,))
     return cursor.fetchall()
 
+def get_money(cursor, today):
+     cursor.execute("""
+            SELECT driver_id, SUM(total_amount) AS total_amount
+            FROM trips
+            WHERE DATE(trip_date) = %s
+            GROUP BY driver_id
+            ORDER BY total_amount DESC
+            LIMIT 1;
+        """, (today,))
+
 
 
 

@@ -3,6 +3,7 @@ from db_setup import add_driver, add_route, record_trip
 from datetime import date
 import csv
 from db_setup import reports
+from db_setup import get_money
 
 
 def register_driver():
@@ -149,20 +150,22 @@ def top_earning_driver():
     conn = create_database()
     cursor = conn.cursor()
     today = date.today()
+    
     try:
-        cursor.execute("""
-            SELECT driver_id, SUM(total_amount) AS total_amount
-            FROM trips
-            WHERE DATE(trip_date) = %s
-            GROUP BY driver_id
-            ORDER BY total_amount DESC
-            LIMIT 1;
-        """, (today,))
-        result = cursor.fetchone()
-        if result:
-            print(f"Top-earning driver today: ID {result[0]} with R{result[1]:.2f}")
-        else:
+        all_drivers = reports(cursor, today)
+        
+        if not all_drivers:
             print("No trips recorded today.")
+            return
+        
+   
+        top_driver = all_drivers[0]
+        driver_name = top_driver[1]  
+        driver_id = top_driver[0]    
+        total_earned = top_driver[5] 
+        
+        print(f"Top-earning driver today: {driver_name} (ID {driver_id}) with R{total_earned:.2f}")
+        
     finally:
         cursor.close()
         conn.close()
